@@ -1,4 +1,3 @@
-// scheduler.js
 require('dotenv').config();
 const cron = require('node-cron');
 const axios = require('axios');
@@ -8,26 +7,43 @@ const path = require('path');
 const BLOG_FILE = path.join(__dirname, 'blogQueue.json');
 const SEND_ENDPOINT = process.env.SEND_ENDPOINT;
 
-// Load blog queue
+// Load blog queue from file
 function loadBlogQueue() {
-  if (!fs.existsSync(BLOG_FILE)) return [];
+  console.log('📂 Loading blogQueue.json...');
+
+  if (!fs.existsSync(BLOG_FILE)) {
+    console.log('📁 blogQueue.json not found, creating empty list...');
+    fs.writeFileSync(BLOG_FILE, '[]');
+    return [];
+  }
+
   try {
     const raw = fs.readFileSync(BLOG_FILE, 'utf-8');
-    if (!raw.trim()) return [];
-    return JSON.parse(raw);
+    if (!raw.trim()) {
+      console.log('📄 File is empty, returning empty list.');
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    console.log(`📄 Loaded ${parsed.length} blog(s) from blogQueue.json`);
+    return parsed;
   } catch (error) {
     console.error("⚠️ Failed to parse blogQueue.json:", error.message);
     return [];
   }
 }
 
-// Save blog queue
+// Save updated blog queue to file
 function saveBlogQueue(queue) {
+  console.log(`💾 Saving ${queue.length} blog(s) to blogQueue.json...`);
   fs.writeFileSync(BLOG_FILE, JSON.stringify(queue, null, 2));
+  console.log('✅ blogQueue.json saved successfully.');
 }
 
-// Send next blog post
+// Send the next unsent blog
 async function sendNextBlog() {
+  console.log('🚀 Attempting to send next blog...');
+
   const queue = loadBlogQueue();
   const nextIndex = queue.findIndex(b => !b.sent);
 
@@ -37,25 +53,27 @@ async function sendNextBlog() {
   }
 
   const blog = queue[nextIndex];
+  console.log(`📤 Preparing to send blog: "${blog.title}" (Index ${nextIndex})`);
 
   try {
     const response = await axios.post(SEND_ENDPOINT, blog);
-    console.log(`✅ Sent blog: "${blog.title}" | Status: ${response.status}`);
+    console.log(`✅ Successfully sent blog: "${blog.title}" | HTTP ${response.status}`);
 
-    // Mark as sent and save
+    // Mark as sent
     queue[nextIndex].sent = true;
     saveBlogQueue(queue);
+    console.log(`📌 Marked blog as sent: "${blog.title}"`);
   } catch (error) {
     console.error(`❌ Failed to send blog: "${blog.title}"`);
     console.error('   ', error.response?.data || error.message);
   }
 }
 
-// Schedule task: Every Monday, Wednesday, Friday at 9:00 AM server time
+// 🕘 Schedule: Every Monday, Wednesday, Friday at 9:00 AM
 cron.schedule('0 9 * * 1,3,5', () => {
   console.log(`⏰ ${new Date().toISOString()} | Triggering scheduled blog send...`);
   sendNextBlog();
 });
 
-// Optional: Uncomment to send one immediately on startup for testing
+// Optional: Uncomment for manual test
 // sendNextBlog();
