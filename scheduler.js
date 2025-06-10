@@ -11,7 +11,14 @@ const SEND_ENDPOINT = process.env.SEND_ENDPOINT;
 // Load blog queue
 function loadBlogQueue() {
   if (!fs.existsSync(BLOG_FILE)) return [];
-  return JSON.parse(fs.readFileSync(BLOG_FILE));
+  try {
+    const raw = fs.readFileSync(BLOG_FILE, 'utf-8');
+    if (!raw.trim()) return [];
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error("⚠️ Failed to parse blogQueue.json:", error.message);
+    return [];
+  }
 }
 
 // Save blog queue
