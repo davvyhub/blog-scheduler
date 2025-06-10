@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -40,12 +40,19 @@ function saveBlogQueue(blogs) {
   console.log('✅ blogQueue.json updated.');
 }
 
+// Utility: Check freshness
+function isNewBatch(latestReceived, currentReceived) {
+  const diffInMs = new Date(currentReceived) - new Date(latestReceived);
+  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+  console.log(`📅 Time since last blog: ${diffInDays.toFixed(2)} day(s)`);
+  return diffInDays > 3;
+}
+
 // 📥 Handle form-data from Make.com
 app.post('/receive-blogs', upload.none(), (req, res) => {
-  console.log('📨 Received POST to /receive-blogs');
-
   try {
-    console.log("📥 Incoming form-data content:", req.body);
+    console.log('📨 Received POST to /receive-blogs');
+    console.log('📥 Incoming form-data content:', req.body);
 
     const blog = {
       title: req.body.title || '',
@@ -56,29 +63,29 @@ app.post('/receive-blogs', upload.none(), (req, res) => {
       date: req.body.date || req.body['Date created'] || req.body['rss pubdate'] || '',
       image: req.body['medicontent url'] || '',
       guid: req.body['rss guid'] || req.body.id || '',
-      sent: false
+      sent: false,
+      receivedAt: new Date().toISOString()
     };
 
-    console.log(`🧱 Parsed blog data: "${blog.title}"`);
+    let queue = loadBlogQueue();
 
-    const queue = loadBlogQueue();
+    if (queue.length > 0) {
+      const lastReceived = queue[0].receivedAt;
 
-    // Check for duplicates
-    const duplicate = queue.some(item => item.guid === blog.guid);
-    if (duplicate) {
-      console.log(`⚠️ Duplicate blog detected by GUID: "${blog.guid}" - Skipping.`);
-      return res.status(200).json({ message: 'Duplicate blog. Skipped.' });
+      if (isNewBatch(lastReceived, blog.receivedAt)) {
+        console.log('🔄 New batch detected (older than 3 days). Resetting queue...');
+        queue = [];
+      }
     }
 
     queue.unshift(blog);
-    console.log(`📌 Adding blog to the top of the queue: "${blog.title}"`);
-
     saveBlogQueue(queue);
 
-    console.log(`✅ Blog successfully saved: "${blog.title}"`);
+    console.log(`✅ Blog saved: "${blog.title}"`);
+    console.log(`📦 Queue size is now ${queue.length}`);
     res.json({ message: 'Blog added successfully' });
   } catch (err) {
-    console.error('❌ Error in /receive-blogs:', err.message);
+    console.error('❌ Error handling /receive-blogs:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -90,13 +97,13 @@ app.use(express.json());
 app.get('/status', (req, res) => {
   console.log('🔍 GET request to /status');
   const queue = loadBlogQueue();
-  const response = {
+  const result = {
     total: queue.length,
     unsent: queue.filter(b => !b.sent).length,
-    sent: queue.filter(b => b.sent).length,
+    sent: queue.filter(b => b.sent).length
   };
-  console.log('📊 Status data:', response);
-  res.json(response);
+  console.log('📊 Status:', result);
+  res.json(result);
 });
 
 // 🚀 Start server
