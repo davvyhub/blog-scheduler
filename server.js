@@ -9,31 +9,32 @@ const upload = multer();
 const PORT = process.env.PORT || 3000;
 const BLOG_FILE = path.join(__dirname, 'blogQueue.json');
 
-// Utility: Save blog queue to file
-function saveBlogQueue(blogs) {
-  fs.writeFileSync(BLOG_FILE, JSON.stringify(blogs, null, 2));
-}
-
-// Utility: Load blog queue from file
+// Utility: Load blog queue
 function loadBlogQueue() {
-  if (!fs.existsSync(BLOG_FILE)) return [];
+  if (!fs.existsSync(BLOG_FILE)) {
+    fs.writeFileSync(BLOG_FILE, '[]');
+    return [];
+  }
+
   try {
     const raw = fs.readFileSync(BLOG_FILE, 'utf-8');
     if (!raw.trim()) return [];
     return JSON.parse(raw);
   } catch (error) {
-    console.error("⚠️ Failed to parse blogQueue.json:", error.message);
+    console.error("⚠️ Error parsing blogQueue.json:", error.message);
     return [];
   }
 }
 
-// 🚨 DO NOT use express.json() before multer for multipart/form-data
-// Place JSON middleware AFTER form-data routes
+// Utility: Save blog queue
+function saveBlogQueue(blogs) {
+  fs.writeFileSync(BLOG_FILE, JSON.stringify(blogs, null, 2));
+}
 
-// 📥 Form-based blog post endpoint (for Make.com multipart/form-data)
+// 📥 Handle form-data from Make.com
 app.post('/receive-blogs', upload.none(), (req, res) => {
   try {
-    console.log("📥 Received form-data:", req.body); // DEBUG LOG
+    console.log("📥 Incoming form-data:", req.body);
 
     const blog = {
       title: req.body.title || '',
@@ -48,21 +49,30 @@ app.post('/receive-blogs', upload.none(), (req, res) => {
     };
 
     const queue = loadBlogQueue();
-    queue.unshift(blog); // Add to beginning
+
+    // Check for duplicates (by guid)
+    const duplicate = queue.some(item => item.guid === blog.guid);
+    if (duplicate) {
+      console.log(`⚠️ Duplicate blog ignored: "${blog.title}"`);
+      return res.status(200).json({ message: 'Duplicate blog. Skipped.' });
+    }
+
+    // Add to beginning of queue
+    queue.unshift(blog);
     saveBlogQueue(queue);
 
     console.log(`✅ Blog saved: "${blog.title}"`);
     res.json({ message: 'Blog added successfully' });
   } catch (err) {
-    console.error('❌ Error handling /receive-blogs:', err.message);
+    console.error('❌ Error in /receive-blogs:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// ✅ JSON middleware for other routes (after form handlers)
+// 🧪 JSON middleware for other routes
 app.use(express.json());
 
-// 🧪 Optional status check endpoint
+// 📊 Optional status check
 app.get('/status', (req, res) => {
   const queue = loadBlogQueue();
   res.json({
@@ -72,7 +82,7 @@ app.get('/status', (req, res) => {
   });
 });
 
-// 🚀 Start server
+// 🚀 Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

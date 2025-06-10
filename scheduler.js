@@ -26,33 +26,36 @@ function saveBlogQueue(queue) {
   fs.writeFileSync(BLOG_FILE, JSON.stringify(queue, null, 2));
 }
 
-// Send next blog
+// Send next blog post
 async function sendNextBlog() {
-  let queue = loadBlogQueue();
-  const next = queue.find(b => !b.sent);
+  const queue = loadBlogQueue();
+  const nextIndex = queue.findIndex(b => !b.sent);
 
-  if (!next) {
-    console.log('No unsent blogs in the queue.');
+  if (nextIndex === -1) {
+    console.log('📭 No unsent blogs available. Skipping this round.');
     return;
   }
 
+  const blog = queue[nextIndex];
+
   try {
-    const response = await axios.post(SEND_ENDPOINT, next);
-    console.log(`✅ Sent blog: "${next.title}" | Response: ${response.status}`);
+    const response = await axios.post(SEND_ENDPOINT, blog);
+    console.log(`✅ Sent blog: "${blog.title}" | Status: ${response.status}`);
 
     // Mark as sent and save
-    next.sent = true;
+    queue[nextIndex].sent = true;
     saveBlogQueue(queue);
   } catch (error) {
-    console.error(`❌ Failed to send blog: "${next.title}"`, error.message);
+    console.error(`❌ Failed to send blog: "${blog.title}"`);
+    console.error('   ', error.response?.data || error.message);
   }
 }
 
-// Schedule: Mon, Wed, Fri at 9:00 AM
+// Schedule task: Every Monday, Wednesday, Friday at 9:00 AM server time
 cron.schedule('0 9 * * 1,3,5', () => {
-  console.log('📤 Triggering scheduled blog send...');
+  console.log(`⏰ ${new Date().toISOString()} | Triggering scheduled blog send...`);
   sendNextBlog();
 });
 
-// Run once on startup (optional)
+// Optional: Uncomment to send one immediately on startup for testing
 // sendNextBlog();
