@@ -1,14 +1,13 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 
 const app = express();
+const upload = multer();
 const PORT = process.env.PORT || 3000;
 const BLOG_FILE = path.join(__dirname, 'blogQueue.json');
-
-app.use(express.json());
 
 // Utility: Save blog queue to file
 function saveBlogQueue(blogs) {
@@ -18,17 +17,24 @@ function saveBlogQueue(blogs) {
 // Utility: Load blog queue from file
 function loadBlogQueue() {
   if (!fs.existsSync(BLOG_FILE)) return [];
-  const raw = fs.readFileSync(BLOG_FILE);
-  return JSON.parse(raw);
+  try {
+    const raw = fs.readFileSync(BLOG_FILE, 'utf-8');
+    if (!raw.trim()) return [];
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error("⚠️ Failed to parse blogQueue.json:", error.message);
+    return [];
+  }
 }
 
-// Endpoint to receive blogs from Make.com
-// Add at the top
-const multer = require('multer');
-const upload = multer();
+// 🚨 DO NOT use express.json() before multer for multipart/form-data
+// Place JSON middleware AFTER form-data routes
 
+// 📥 Form-based blog post endpoint (for Make.com multipart/form-data)
 app.post('/receive-blogs', upload.none(), (req, res) => {
   try {
+    console.log("📥 Received form-data:", req.body); // DEBUG LOG
+
     const blog = {
       title: req.body.title || '',
       description: req.body.Description || '',
@@ -37,29 +43,26 @@ app.post('/receive-blogs', upload.none(), (req, res) => {
       url: req.body.url || req.body['rss link'] || '',
       date: req.body.date || req.body['Date created'] || req.body['rss pubdate'] || '',
       image: req.body['medicontent url'] || '',
-      guid: req.body['rss guid'] || '',
+      guid: req.body['rss guid'] || req.body.id || '',
       sent: false
     };
 
-    // Load existing queue
     const queue = loadBlogQueue();
-
-    // Add new blog at the beginning (most recent first)
-    queue.unshift(blog);
-
-    // Save updated queue
+    queue.unshift(blog); // Add to beginning
     saveBlogQueue(queue);
 
-    console.log('✅ Blog received via form data:', blog.title);
+    console.log(`✅ Blog saved: "${blog.title}"`);
     res.json({ message: 'Blog added successfully' });
-
   } catch (err) {
-    console.error('❌ Error processing form-data blog:', err.message);
+    console.error('❌ Error handling /receive-blogs:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// Optional: Status endpoint to view queue
+// ✅ JSON middleware for other routes (after form handlers)
+app.use(express.json());
+
+// 🧪 Optional status check endpoint
 app.get('/status', (req, res) => {
   const queue = loadBlogQueue();
   res.json({
@@ -69,6 +72,7 @@ app.get('/status', (req, res) => {
   });
 });
 
+// 🚀 Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
