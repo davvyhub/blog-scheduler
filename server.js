@@ -23,22 +23,40 @@ function loadBlogQueue() {
 }
 
 // Endpoint to receive blogs from Make.com
-app.post('/receive-blogs', (req, res) => {
-  const blogs = req.body;
+// Add at the top
+const multer = require('multer');
+const upload = multer();
 
-  if (!Array.isArray(blogs)) {
-    return res.status(400).json({ error: 'Expected an array of blog posts' });
+app.post('/receive-blogs', upload.none(), (req, res) => {
+  try {
+    const blog = {
+      title: req.body.title || '',
+      description: req.body.Description || '',
+      summary: req.body.Summary || '',
+      author: req.body.Author || '',
+      url: req.body.url || req.body['rss link'] || '',
+      date: req.body.date || req.body['Date created'] || req.body['rss pubdate'] || '',
+      image: req.body['medicontent url'] || '',
+      guid: req.body['rss guid'] || '',
+      sent: false
+    };
+
+    // Load existing queue
+    const queue = loadBlogQueue();
+
+    // Add new blog at the beginning (most recent first)
+    queue.unshift(blog);
+
+    // Save updated queue
+    saveBlogQueue(queue);
+
+    console.log('✅ Blog received via form data:', blog.title);
+    res.json({ message: 'Blog added successfully' });
+
+  } catch (err) {
+    console.error('❌ Error processing form-data blog:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-
-  // Sort blogs from newest to oldest if date is available, else as-is
-  const sortedBlogs = blogs
-    .map(blog => ({ ...blog, sent: false }))
-    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-  saveBlogQueue(sortedBlogs);
-
-  console.log(`Received and saved ${sortedBlogs.length} blog posts.`);
-  res.json({ message: 'Blog queue updated successfully' });
 });
 
 // Optional: Status endpoint to view queue
