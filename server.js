@@ -41,28 +41,29 @@ function isNewBatch(lastReceived, currentReceived) {
 }
 
 async function sendNextBlog() {
-  console.log('🚀 Attempting to send next blog...');
-  const queue = loadBlogQueue();
-  const idx = queue.findIndex(b => !b.sent);
-  if (idx === -1) {
-    console.log('📭 No unsent blogs.');
-    return { status: 'empty' };
-  }
-
-  const blog = queue[idx];
-  console.log(`📤 Sending blog "${blog.title}" to Make.com endpoint...`);
-
-  try {
-    const resp = await axios.post(SEND_ENDPOINT, blog);
-    console.log(`✅ Sent "${blog.title}" | HTTP ${resp.status}`);
-    queue[idx].sent = true;
-    saveBlogQueue(queue);
-    return { status: 'sent', title: blog.title };
-  } catch (err) {
-    console.error(`❌ Failed to send "${blog.title}":`, err.message);
-    return { status: 'error', error: err.message };
-  }
-}
+    console.log('🚀 Attempting to send next blog...');
+    const queue = loadBlogQueue();
+    const idx = queue.findIndex(b => !b.sent);
+    if (idx === -1) {
+      console.log('📭 No unsent blogs.');
+      return { status: 'empty' };
+    }
+  
+    const blog = queue[idx];
+    console.log(`📤 Sending blog "${blog.title}" to Make.com endpoint...`);
+    console.log('📦 Payload:', blog);  // <--- ADD THIS LINE TO SEE THE DATA
+  
+    try {
+      const resp = await axios.post(SEND_ENDPOINT, blog);
+      console.log(`✅ Sent "${blog.title}" | HTTP ${resp.status}`);
+      queue[idx].sent = true;
+      saveBlogQueue(queue);
+      return { status: 'sent', title: blog.title, payload: blog };  // optional: include in response
+    } catch (err) {
+      console.error(`❌ Failed to send "${blog.title}":`, err.message);
+      return { status: 'error', error: err.message };
+    }
+  }  
 
 // ----------- ROUTES ------------ //
 
