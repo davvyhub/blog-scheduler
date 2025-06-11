@@ -1,59 +1,75 @@
 require('dotenv').config();
 const express = require('express');
+const multer = require('multer');
+const cron = require('node-cron');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer');
 
 const app = express();
 const upload = multer();
 const PORT = process.env.PORT || 3000;
 const BLOG_FILE = path.join(__dirname, 'blogQueue.json');
+const SEND_ENDPOINT = process.env.SEND_ENDPOINT;
 
-// Utility: Load blog queue
+// ----------- UTILITIES ------------ //
+
 function loadBlogQueue() {
-  console.log('📂 Loading blogQueue.json...');
   if (!fs.existsSync(BLOG_FILE)) {
-    console.log('📁 blogQueue.json not found, creating a new one...');
+    console.log('📁 blogQueue.json not found, creating new one...');
     fs.writeFileSync(BLOG_FILE, '[]');
     return [];
   }
-
   try {
     const raw = fs.readFileSync(BLOG_FILE, 'utf-8');
-    if (!raw.trim()) {
-      console.log('📄 blogQueue.json is empty, returning empty array.');
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    console.log(`📄 Loaded ${parsed.length} blog(s) from blogQueue.json`);
-    return parsed;
-  } catch (error) {
-    console.error("⚠️ Error parsing blogQueue.json:", error.message);
+    return raw.trim() ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.error('⚠️ Error parsing blogQueue.json:', err.message);
     return [];
   }
 }
 
-// Utility: Save blog queue
-function saveBlogQueue(blogs) {
-  console.log(`💾 Saving ${blogs.length} blog(s) to blogQueue.json...`);
-  fs.writeFileSync(BLOG_FILE, JSON.stringify(blogs, null, 2));
-  console.log('✅ blogQueue.json updated.');
+function saveBlogQueue(queue) {
+  fs.writeFileSync(BLOG_FILE, JSON.stringify(queue, null, 2));
 }
 
-// Utility: Check freshness
-function isNewBatch(latestReceived, currentReceived) {
-  const diffInMs = new Date(currentReceived) - new Date(latestReceived);
-  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-  console.log(`📅 Time since last blog: ${diffInDays.toFixed(2)} day(s)`);
-  return diffInDays > 3;
+// Detect new batch (> 3 days)
+function isNewBatch(lastReceived, currentReceived) {
+  const diffMs = new Date(currentReceived) - new Date(lastReceived);
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays > 3;
 }
 
-// 📥 Handle form-data from Make.com
+async function sendNextBlog() {
+  console.log('🚀 Attempting to send next blog...');
+  const queue = loadBlogQueue();
+  const idx = queue.findIndex(b => !b.sent);
+  if (idx === -1) {
+    console.log('📭 No unsent blogs.');
+    return { status: 'empty' };
+  }
+
+  const blog = queue[idx];
+  console.log(`📤 Sending blog "${blog.title}" to Make.com endpoint...`);
+
+  try {
+    const resp = await axios.post(SEND_ENDPOINT, blog);
+    console.log(`✅ Sent "${blog.title}" | HTTP ${resp.status}`);
+    queue[idx].sent = true;
+    saveBlogQueue(queue);
+    return { status: 'sent', title: blog.title };
+  } catch (err) {
+    console.error(`❌ Failed to send "${blog.title}":`, err.message);
+    return { status: 'error', error: err.message };
+  }
+}
+
+// ----------- ROUTES ------------ //
+
+// Receive RSS blogs via multipart/form-data
 app.post('/receive-blogs', upload.none(), (req, res) => {
   try {
-    console.log('📨 Received POST to /receive-blogs');
-    console.log('📥 Incoming form-data content:', req.body);
-
+    console.log('📨 /receive-blogs called:', req.body);
     const blog = {
       title: req.body.title || '',
       description: req.body.Description || '',
@@ -68,45 +84,47 @@ app.post('/receive-blogs', upload.none(), (req, res) => {
     };
 
     let queue = loadBlogQueue();
-
-    if (queue.length > 0) {
-      const lastReceived = queue[0].receivedAt;
-
-      if (isNewBatch(lastReceived, blog.receivedAt)) {
-        console.log('🔄 New batch detected (older than 3 days). Resetting queue...');
-        queue = [];
-      }
+    if (queue.length > 0 && isNewBatch(queue[0].receivedAt, blog.receivedAt)) {
+      console.log('🔄 Detected new batch (>3 days). Resetting queue.');
+      queue = [];
     }
 
     queue.unshift(blog);
     saveBlogQueue(queue);
-
-    console.log(`✅ Blog saved: "${blog.title}"`);
-    console.log(`📦 Queue size is now ${queue.length}`);
-    res.json({ message: 'Blog added successfully' });
+    console.log(`✅ Blog saved: "${blog.title}" | Queue size: ${queue.length}`);
+    res.json({ message: 'Blog saved', title: blog.title });
   } catch (err) {
-    console.error('❌ Error handling /receive-blogs:', err.message);
+    console.error('❌ Error in /receive-blogs:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// 🧪 JSON middleware for other routes
-app.use(express.json());
-
-// 📊 Status endpoint
+// Status endpoint
 app.get('/status', (req, res) => {
-  console.log('🔍 GET request to /status');
   const queue = loadBlogQueue();
-  const result = {
+  res.json({
     total: queue.length,
-    unsent: queue.filter(b => !b.sent).length,
-    sent: queue.filter(b => b.sent).length
-  };
-  console.log('📊 Status:', result);
+    sent: queue.filter(b => b.sent).length,
+    unsent: queue.filter(b => !b.sent).length
+  });
+});
+
+// Test-send endpoint (manual trigger)
+app.get('/test-send', async (req, res) => {
+  console.log('🧪 /test-send called');
+  const result = await sendNextBlog();
   res.json(result);
 });
 
-// 🚀 Start server
+// ----------- SCHEDULER ------------ //
+
+cron.schedule('0 9 * * 1,3,5', () => {
+  console.log(`⏰ Scheduled send at ${new Date().toISOString()}`);
+  sendNextBlog();
+});
+
+// ----------- START SERVER ------------ //
+
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server listening at http://localhost:${PORT}`);
 });
