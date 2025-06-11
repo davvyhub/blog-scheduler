@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RSS Source Configuration</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
+    label { display: block; margin-top: 1em; }
+    input, select { width: 100%; padding: 0.5em; margin-top: 0.2em; }
+    button { margin-top: 1em; padding: 0.7em 1.2em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
+    th { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <h1>RSS Source Configuration</h1>
+
+  <form id="source-form">
+    <input type="hidden" id="source-id" />
+    <label>
+      ID (unique):
+      <input type="text" id="id" required />
+    </label>
+    <label>
+      Name:
+      <input type="text" id="name" required />
+    </label>
+    <label>
+      Days (Ctrl+click to select multiple):
+      <select id="days" multiple size="7">
+        <option>Sun</option>
+        <option>Mon</option>
+        <option>Tue</option>
+        <option>Wed</option>
+        <option>Thu</option>
+        <option>Fri</option>
+        <option>Sat</option>
+      </select>
+    </label>
+    <label>
+      Time (HH:mm):
+      <input type="time" id="time" required />
+    </label>
+    <label>
+      Make.com Webhook URL:
+      <input type="url" id="endpoint" required />
+    </label>
+    <button type="submit">Save Source</button>
+    <button type="button" id="reset">Reset Form</button>
+  </form>
+
+  <h2>Existing Sources</h2>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Days</th><th>Time</th><th>Endpoint</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="sources-table"></tbody>
+  </table>
+
+  <script>
+    const form = document.getElementById('source-form');
+    const tableBody = document.getElementById('sources-table');
+    const resetBtn = document.getElementById('reset');
+
+    async function loadConfig() {
+      const res = await fetch('/config');
+      const sources = await res.json();
+      tableBody.innerHTML = '';
+      sources.forEach(src => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${src.id}</td>
+          <td>${src.name}</td>
+          <td>${src.days.join(', ')}</td>
+          <td>${src.time}</td>
+          <td><a href="${src.endpoint}" target="_blank">Link</a></td>
+          <td>
+            <button data-id="${src.id}">Edit</button>
+          </td>`;
+        tableBody.appendChild(tr);
+      });
+      // attach edit handlers
+      tableBody.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => editSource(btn.dataset.id, sources);
+      });
+    }
+
+    function editSource(id, sources) {
+      const src = sources.find(s => s.id === id);
+      document.getElementById('source-id').value = src.id;
+      document.getElementById('id').value = src.id;
+      document.getElementById('name').value = src.name;
+      document.getElementById('time').value = src.time;
+      document.getElementById('endpoint').value = src.endpoint;
+      Array.from(document.getElementById('days').options).forEach(opt => {
+        opt.selected = src.days.includes(opt.value);
+      });
+    }
+
+    resetBtn.onclick = () => {
+      form.reset();
+      document.getElementById('source-id').value = '';
+    };
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      // gather form data
+      const id = document.getElementById('id').value.trim();
+      const existingId = document.getElementById('source-id').value;
+      const name = document.getElementById('name').value.trim();
+      const time = document.getElementById('time').value;
+      const endpoint = document.getElementById('endpoint').value.trim();
+      const days = Array.from(document.getElementById('days').selectedOptions).map(o => o.value);
+
+      // fetch existing config
+      const res = await fetch('/config');
+      const sources = await res.json();
+      // update or add
+      const idx = sources.findIndex(s => s.id === existingId || s.id === id);
+      const newSource = { id, name, days, time, endpoint };
+      if (idx >= 0) sources[idx] = newSource;
+      else sources.push(newSource);
+
+      // post updated config
+      await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sources)
+      });
+
+      form.reset();
+      document.getElementById('source-id').value = '';
+      loadConfig();
+    };
+
+    // initial load
+    loadConfig();
+  </script>
+</body>
+</html>

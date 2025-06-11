@@ -1,0 +1,17 @@
+[
+    {
+      "id": "news",
+      "name": "Daily News",
+      "days": ["Mon", "Wed", "Fri"],
+      "time": "09:00",
+      "endpoint": "https://hook.make.com/xxxxx-news"
+    },
+    {
+      "id": "sports",
+      "name": "Sports Updates",
+      "days": ["Tue", "Thu"],
+      "time": "14:30",
+      "endpoint": "https://hook.make.com/xxxxx-sports"
+    }
+  ]
+  
