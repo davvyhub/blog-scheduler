@@ -2,139 +2,450 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RSS Source Configuration</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
-    label { display: block; margin-top: 1em; }
-    input, select { width: 100%; padding: 0.5em; margin-top: 0.2em; }
-    button { margin-top: 1em; padding: 0.7em 1.2em; }
-    table { width: 100%; border-collapse: collapse; margin-top: 2em; }
-    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
-    th { background: #f5f5f5; }
+    :root {
+      --primary: #4361ee;
+      --primary-light: #e0e7ff;
+      --secondary: #3f37c9;
+      --text: #1e293b;
+      --text-light: #64748b;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --bg-card: #ffffff;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+      line-height: 1.5;
+      padding: 2rem 1rem;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    
+    h1, h2 {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+      margin-top: 3rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .card {
+      background-color: var(--bg-card);
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+    
+    .form-hint {
+      font-size: 0.875rem;
+      color: var(--text-light);
+      margin-top: 0.25rem;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    select[multiple] {
+      min-height: 120px;
+      padding: 0.5rem;
+    }
+    
+    select[multiple] option {
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+    }
+    
+    select[multiple] option:hover {
+      background-color: var(--primary-light);
+    }
+    
+    select[multiple] option:checked {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    button {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+    
+    button[type="submit"] {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    button[type="submit"]:hover {
+      background-color: var(--secondary);
+    }
+    
+    button[type="button"] {
+      background-color: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    
+    button[type="button"]:hover {
+      background-color: var(--bg);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background-color: var(--bg-card);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    th, td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    th {
+      background-color: var(--bg);
+      font-weight: 600;
+      color: var(--text);
+    }
+    
+    tr:hover {
+      background-color: var(--bg);
+    }
+    
+    .actions button {
+      padding: 0.5rem 1rem;
+      background-color: var(--primary-light);
+      color: var(--primary);
+      border: none;
+    }
+    
+    .actions button:hover {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background-color: var(--primary-light);
+      color: var(--primary);
+      margin-right: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 0;
+      }
+      
+      .card {
+        padding: 1.5rem;
+      }
+      
+      th, td {
+        padding: 0.75rem;
+      }
+      
+      .button-group {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>RSS Source Configuration</h1>
-
-  <form id="source-form">
-    <input type="hidden" id="source-id" />
-    <label>
-      ID (unique):
-      <input type="text" id="id" required />
-    </label>
-    <label>
-      Name:
-      <input type="text" id="name" required />
-    </label>
-    <label>
-      Days (Ctrl+click to select multiple):
-      <select id="days" multiple size="7">
-        <option>Sun</option>
-        <option>Mon</option>
-        <option>Tue</option>
-        <option>Wed</option>
-        <option>Thu</option>
-        <option>Fri</option>
-        <option>Sat</option>
-      </select>
-    </label>
-    <label>
-      Time (HH:mm):
-      <input type="time" id="time" required />
-    </label>
-    <label>
-      Make.com Webhook URL:
-      <input type="url" id="endpoint" required />
-    </label>
-    <button type="submit">Save Source</button>
-    <button type="button" id="reset">Reset Form</button>
-  </form>
-
-  <h2>Existing Sources</h2>
-  <table>
-    <thead>
-      <tr><th>ID</th><th>Name</th><th>Days</th><th>Time</th><th>Endpoint</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="sources-table"></tbody>
-  </table>
+  <div class="container">
+    <h1>RSS Source Configuration</h1>
+    
+    <div class="card">
+      <form id="source-form">
+        <input type="hidden" id="source-id" />
+        
+        <div class="form-group">
+          <label for="id">ID (unique identifier)</label>
+          <input type="text" id="id" required />
+          <p class="form-hint">This will be used to uniquely identify your RSS source</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="name">Source Name</label>
+          <input type="text" id="name" required />
+          <p class="form-hint">A descriptive name for your RSS source</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="days">Delivery Days</label>
+          <select id="days" multiple size="7">
+            <option value="Sun">Sunday</option>
+            <option value="Mon">Monday</option>
+            <option value="Tue">Tuesday</option>
+            <option value="Wed">Wednesday</option>
+            <option value="Thu">Thursday</option>
+            <option value="Fri">Friday</option>
+            <option value="Sat">Saturday</option>
+          </select>
+          <p class="form-hint">Hold Ctrl/Cmd to select multiple days</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="time">Delivery Time</label>
+          <input type="time" id="time" required />
+          <p class="form-hint">When the RSS feed should be delivered (HH:MM)</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="endpoint">Webhook URL</label>
+          <input type="url" id="endpoint" required placeholder="https://" />
+          <p class="form-hint">Your Make.com webhook endpoint URL</p>
+        </div>
+        
+        <div class="button-group">
+          <button type="submit">Save Source</button>
+          <button type="button" id="reset">Reset Form</button>
+        </div>
+      </form>
+    </div>
+    
+    <h2>Configured Sources</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Days</th>
+          <th>Time</th>
+          <th>Endpoint</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="sources-table">
+        <!-- Sources will be populated here -->
+      </tbody>
+    </table>
+  </div>
 
   <script>
     const form = document.getElementById('source-form');
     const tableBody = document.getElementById('sources-table');
     const resetBtn = document.getElementById('reset');
+    const statusMessage = document.createElement('div');
+    statusMessage.style.marginTop = '1rem';
+    form.parentNode.insertBefore(statusMessage, form.nextSibling);
+
+    function showStatus(message, isError = false) {
+      statusMessage.textContent = message;
+      statusMessage.style.color = isError ? 'var(--danger)' : 'var(--success)';
+      setTimeout(() => statusMessage.textContent = '', 3000);
+    }
 
     async function loadConfig() {
-      const res = await fetch('/config');
-      const sources = await res.json();
-      tableBody.innerHTML = '';
-      sources.forEach(src => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${src.id}</td>
-          <td>${src.name}</td>
-          <td>${src.days.join(', ')}</td>
-          <td>${src.time}</td>
-          <td><a href="${src.endpoint}" target="_blank">Link</a></td>
-          <td>
-            <button data-id="${src.id}">Edit</button>
-          </td>`;
-        tableBody.appendChild(tr);
-      });
-      // attach edit handlers
-      tableBody.querySelectorAll('button').forEach(btn => {
-        btn.onclick = () => editSource(btn.dataset.id, sources);
-      });
+      try {
+        const res = await fetch('/config');
+        if (!res.ok) throw new Error('Failed to load configuration');
+        
+        const sources = await res.json();
+        tableBody.innerHTML = '';
+        
+        if (sources.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-light)">
+                No RSS sources configured yet. Add one using the form above.
+              </td>
+            </tr>`;
+          return;
+        }
+        
+        sources.forEach(src => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><code>${src.id}</code></td>
+            <td>${src.name}</td>
+            <td>${src.days.map(day => `<span class="badge">${day}</span>`).join('')}</td>
+            <td>${src.time}</td>
+            <td><a href="${src.endpoint}" target="_blank" rel="noopener noreferrer">View</a></td>
+            <td class="actions">
+              <button data-id="${src.id}">Edit</button>
+            </td>`;
+          tableBody.appendChild(tr);
+        });
+        
+        tableBody.querySelectorAll('button').forEach(btn => {
+          btn.onclick = () => editSource(btn.dataset.id, sources);
+        });
+      } catch (error) {
+        console.error('Error loading config:', error);
+        showStatus('Failed to load configuration. Please try again.', true);
+      }
     }
 
     function editSource(id, sources) {
       const src = sources.find(s => s.id === id);
+      if (!src) return;
+      
       document.getElementById('source-id').value = src.id;
       document.getElementById('id').value = src.id;
       document.getElementById('name').value = src.name;
       document.getElementById('time').value = src.time;
       document.getElementById('endpoint').value = src.endpoint;
+      
       Array.from(document.getElementById('days').options).forEach(opt => {
         opt.selected = src.days.includes(opt.value);
       });
+      
+      document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
     }
 
     resetBtn.onclick = () => {
       form.reset();
       document.getElementById('source-id').value = '';
+      statusMessage.textContent = '';
     };
 
     form.onsubmit = async e => {
       e.preventDefault();
-      // gather form data
-      const id = document.getElementById('id').value.trim();
-      const existingId = document.getElementById('source-id').value;
-      const name = document.getElementById('name').value.trim();
-      const time = document.getElementById('time').value;
-      const endpoint = document.getElementById('endpoint').value.trim();
-      const days = Array.from(document.getElementById('days').selectedOptions).map(o => o.value);
+      statusMessage.textContent = '';
+      
+      try {
+        // Gather form data
+        const id = document.getElementById('id').value.trim();
+        const existingId = document.getElementById('source-id').value;
+        const name = document.getElementById('name').value.trim();
+        const time = document.getElementById('time').value;
+        const endpoint = document.getElementById('endpoint').value.trim();
+        const days = Array.from(document.getElementById('days').selectedOptions).map(o => o.value);
 
-      // fetch existing config
-      const res = await fetch('/config');
-      const sources = await res.json();
-      // update or add
-      const idx = sources.findIndex(s => s.id === existingId || s.id === id);
-      const newSource = { id, name, days, time, endpoint };
-      if (idx >= 0) sources[idx] = newSource;
-      else sources.push(newSource);
+        // Validation
+        if (!id || !name || !time || !endpoint) {
+          showStatus('Please fill all required fields', true);
+          return;
+        }
 
-      // post updated config
-      await fetch('/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sources)
-      });
+        if (days.length === 0) {
+          showStatus('Please select at least one delivery day', true);
+          return;
+        }
 
-      form.reset();
-      document.getElementById('source-id').value = '';
-      loadConfig();
+        if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+          showStatus('Webhook URL must start with http:// or https://', true);
+          return;
+        }
+
+        // Fetch existing config
+        const res = await fetch('/config');
+        if (!res.ok) throw new Error('Failed to load existing configuration');
+        
+        const sources = await res.json();
+        
+        // Check for duplicate ID when adding new source
+        if (!existingId && sources.some(s => s.id === id)) {
+          showStatus('A source with this ID already exists', true);
+          return;
+        }
+        
+        // Update or add
+        const idx = sources.findIndex(s => s.id === existingId);
+        const newSource = { id, name, days, time, endpoint };
+        
+        if (idx >= 0) {
+          sources[idx] = newSource;
+        } else {
+          sources.push(newSource);
+        }
+
+        // Post updated config
+        const saveRes = await fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sources)
+        });
+        
+        if (!saveRes.ok) {
+          const errorData = await saveRes.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to save configuration');
+        }
+
+        // Reset and reload
+        form.reset();
+        document.getElementById('source-id').value = '';
+        showStatus('Configuration saved successfully!');
+        await loadConfig();
+        
+      } catch (error) {
+        console.error('Error saving config:', error);
+        showStatus(error.message || 'Failed to save configuration', true);
+      }
     };
 
-    // initial load
+    // Initial load
     loadConfig();
   </script>
 </body>
